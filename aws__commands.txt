@@ -1,0 +1,148 @@
+Phase 1: Build & Push Docker Images
+
+Step 1: Create Dockerfile for Flink Job
+
+FROM flink:1.20.0-scala_2.12-java17 COPY
+flink-job/target/scala-2.12/graphrag-pipeline.jar
+/opt/flink/usrlib/graphrag-job.jar WORKDIR /opt/flink
+
+Step 2: Build Flink JAR
+
+cd ~/graphRag sbt “project flinkJob” clean assembly ls -lh
+flink-job/target/scala-2.12/graphrag-pipeline.jar
+
+Step 3: Create ECR Repository
+
+aws ecr create-repository –repository-name graphrag-flink –region
+us-east-1
+
+Step 4: Login to ECR
+
+aws ecr get-login-password –region us-east-1 | docker login –username
+AWS –password-stdin 147997142493.dkr.ecr.us-east-1.amazonaws.com
+
+Step 5: Build Docker Image
+
+docker build -f deploy/Dockerfile.flink -t graphrag-flink:latest .
+
+Step 6: Tag & Push Image
+
+docker tag graphrag-flink:latest
+147997142493.dkr.ecr.us-east-1.amazonaws.com/graphrag-flink:latest
+docker push
+147997142493.dkr.ecr.us-east-1.amazonaws.com/graphrag-flink:latest
+
+Phase 2: Setup EKS Cluster
+
+Step 7: Create EKS Cluster
+
+eksctl create cluster –name graphrag-cluster –region us-east-1
+–nodegroup-name workers –node-type t3.xlarge –nodes 3 –nodes-min 2
+–nodes-max 4 –managed
+
+Step 8: Enable OIDC Provider
+
+eksctl utils associate-iam-oidc-provider –region=us-east-1
+–cluster=graphrag-cluster –approve
+
+Step 9: Create Service Account with S3 Access
+
+eksctl create iamserviceaccount –name flink –namespace default –cluster
+graphrag-cluster –region us-east-1 –attach-policy-arn
+arn:aws:iam::aws:policy/AmazonS3FullAccess –approve
+–override-existing-serviceaccounts
+
+Step 10: Verify Cluster
+
+kubectl cluster-info kubectl get nodes
+
+Phase 3: Install Flink Operator
+
+Step 11: Add Flink Operator Helm Repo
+
+helm repo add flink-operator-repo
+https://downloads.apache.org/flink/flink-kubernetes-operator-1.6.0/ helm
+repo update
+
+Step 12: Create Namespace
+
+kubectl create namespace flink-operator
+
+Step 13: Install Flink Operator
+
+helm install flink-kubernetes-operator
+flink-operator-repo/flink-kubernetes-operator –namespace flink-operator
+
+Step 14: Verify Operator
+
+kubectl get pods -n flink-operator
+
+Phase 4: Setup S3 Storage
+
+Step 15: Create S3 Bucket
+
+aws s3 mb s3://graphrag-flink-data –region us-east-1 aws s3api
+put-object –bucket graphrag-flink-data –key flink/checkpoints/ aws s3api
+put-object –bucket graphrag-flink-data –key flink/savepoints/ aws s3api
+put-object –bucket graphrag-flink-data –key data/
+
+Step 16: Upload Test Data
+
+aws s3 cp chunks.jsonl s3://graphrag-flink-data/data/chunks.jsonl aws s3
+ls s3://graphrag-flink-data/data/
+
+Phase 5: Deploy Ollama
+
+Step 18: Deploy Ollama
+
+kubectl apply -f deploy/ollama-daemonset.yaml kubectl get pods -l
+app=ollama -w
+
+Step 19: Test Ollama
+
+kubectl run test-ollama –rm -it –image=curlimages/curl –restart=Never –
+curl -s http://ollama.default.svc.cluster.local:11434/api/generate -d
+‘{“model”:“llama3”,“prompt”:“test”,“stream”:false}’ | head -20
+
+Phase 6: Create Secrets & ConfigMaps
+
+Step 20: Create Neo4j Credentials Secret
+
+kubectl create secret generic neo4j-credentials
+–from-literal=NEO4J_URI=‘neo4j+s://7f5eb4a9.databases.neo4j.io’
+–from-literal=NEO4J_USERNAME=‘neo4j’
+–from-literal=NEO4J_PASSWORD=‘your-actual-password’
+
+Step 21: Create GraphRAG ConfigMap
+
+kubectl create configmap graphrag-config
+–from-literal=OLLAMA_URL=‘http://ollama.default.svc.cluster.local:11434’
+–from-literal=OLLAMA_MODEL=‘llama3’ –from-literal=USE_LLM=‘true’
+–from-literal=WRITE_TO_NEO4J=‘true’
+
+Step 22: Verify Secrets & ConfigMaps
+
+kubectl get secrets kubectl get configmaps kubectl describe configmap
+graphrag-config
+
+Phase 7: Deploy Flink Job
+
+Step 24: Deploy Flink Job
+
+kubectl apply -f deployments/job-graph-rag.yaml
+
+Step 25: Monitor Deployment
+
+kubectl get flinkdeployments -w kubectl get pods -l app=graphrag-job
+kubectl logs -l component=jobmanager -f kubectl logs -l
+component=taskmanager -f
+
+Phase 8: Access Flink UI
+
+Step 26: Port Forward Flink UI
+
+kubectl port-forward svc/graphrag-job-rest 8081:8081
+
+Step 27: Open Flink Dashboard
+
+open http://localhost:8081 curl http://localhost:8081/jobs
