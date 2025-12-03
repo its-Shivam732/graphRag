@@ -97,7 +97,8 @@ GraphRAG is a scalable knowledge graph construction pipeline that:
 │  - POST /v1/query           - Natural language queries          │
 │  - GET  /v1/graph/explore   - Graph visualization               │
 │  - GET  /v1/evidence/:id    - Evidence retrieval                │
-│  - GET  /v1/explain/trace   - Query execution trace             │
+│  - GET  /v1/explain/trace   - Query execution trace
+  - GET  /v1/job/status       - status of job
 └─────────────────────────────────────────────────────────────────┘
 ```
 
