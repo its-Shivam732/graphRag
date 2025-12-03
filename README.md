@@ -37,6 +37,7 @@ GraphRAG is a scalable knowledge graph construction pipeline that:
 5. **Exposes** a REST API for natural language queries over the graph
 
 **Key Technologies:**
+- **Java 17 **
 - **Apache Flink 1.20.0** - Distributed stream processing
 - **Neo4j 5.15.0** - Graph database
 - **Ollama (Llama3)** - Local LLM for concept/relation extraction
