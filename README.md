@@ -1,4 +1,3 @@
-Here's a comprehensive README.md for your GraphRAG project:
 
 ---
 
