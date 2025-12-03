@@ -158,7 +158,7 @@ Input: chunks.jsonl
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Java | 17+ | JVM runtime |
+| Java | 17 | JVM runtime |
 | Scala | 2.12.18 | Primary language |
 | SBT | 1.9.7+ | Build tool |
 | Docker | 20+ | Containerization |
