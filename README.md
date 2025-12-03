@@ -516,6 +516,7 @@ classloader:
 
 Then put vm options --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED to edit config vm
 
+Export the env variables according to your system.
 ```bash
 # Set environment variables
 source .env
@@ -552,7 +553,7 @@ STEP 7: Writing to Neo4j...
 Executing pipeline...
 ```
 ### Note
-other option to run is right click on Grahragjob class on intelij and try to run from there. Before this edit run config in intellij for Grahragjob class and add vm options --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+other option to run is right click on Grahragjob class on intelij and try to run from there. Before this edit run config in intellij for Grahragjob class and add vm options --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED. Also in Config class put default configurations like ne04j usename/password and json directory path.
 ### API Service
 
 ### Test API Endpoints
