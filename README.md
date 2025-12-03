@@ -369,11 +369,11 @@ sbt compile
 # Run tests
 sbt test
 
-# Build both JARs
+# Build JAR
 sbt clean assembly
 ```
 
-### Check Build Artifacts
+### Check Build Artifact
 
 ```bash
 # List all built JARs
@@ -384,7 +384,7 @@ find . -name "*.jar" -path "*/target/scala-2.12/*"
 
 ## Running Locally
 
-### Option 1: Run Flink Job Locally
+### Run Flink Job Locally
 
 NOTE-put vm options --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED to edit config vm
 
@@ -424,22 +424,7 @@ STEP 7: Writing to Neo4j...
 Executing pipeline...
 ```
 
-### Option 2: Run API Service Locally
-
-```bash
-# Set environment variables
-source .env
-
-# Run from SBT
-sbt "project apiService" run
-
-# Or run JAR directly
-java -cp graphrag-pipeline.jar com.graphrag.api.GraphRAGApiServer```
-**Expected Output:**
-```
-Server online at http://0.0.0.0:8080/
-Press RETURN to stop...
-```
+### API Service
 
 ### Test API Endpoints
 
@@ -448,7 +433,7 @@ Press RETURN to stop...
 curl http://localhost:8080/health
 # Output: OK
 
-# Query endpoint (hardcoded demo)
+# Query endpoint
 curl -X POST http://localhost:8080/v1/query \
   -H "Content-Type: application/json" \
   -d '{
@@ -467,7 +452,7 @@ curl -X POST http://localhost:8080/v1/query \
 }
 
 # Execution trace
-curl http://localhost:8080/v1/explain/trace/req-a3f2b1c4 | jq
+curl http://localhost:8080/v1/explain/trace/req-a3f2b1c4
 ```
 
 ### Verify Neo4j Data
@@ -634,7 +619,7 @@ aws sts get-caller-identity
 FROM flink:1.20.0-scala_2.12-java17
 
 # Copy Flink job JAR
-COPY flink-job/target/scala-2.12/graphrag-pipeline.jar /opt/flink/usrlib/graphrag-job.jar
+COPY target/scala-2.12/graphrag-pipeline.jar /opt/flink/usrlib/graphrag-job.jar
 
 # Flink will load this JAR automatically
 WORKDIR /opt/flink
@@ -649,7 +634,7 @@ cd ~/graphRag
 sbt "project flinkJob" clean assembly
 
 # Verify JAR exists
-ls -lh flink-job/target/scala-2.12/graphrag-pipeline.jar
+ls -lh target/scala-2.12/graphrag-pipeline.jar
 ```
 
 #### Step 3: Create ECR Repository
