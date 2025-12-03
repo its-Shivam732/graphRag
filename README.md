@@ -79,7 +79,7 @@ GraphRAG is a scalable knowledge graph construction pipeline that:
 ┌─────────────────────────────────────────────────────────────────┐
 │                    GRAPH PROJECTION LAYER                       │
 ├─────────────────────────────────────────────────────────────────┤
-│  GraphNode (Chunk, Concept) + GraphEdge (MENTIONS, RELATES_TO) │
+│  GraphNode (Chunk, Concept) + GraphEdge (MENTIONS, CO_OCCURES RELATES_TO) │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
