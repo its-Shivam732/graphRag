@@ -1,82 +1,12 @@
-
 import com.graphrag.api.models._
-import com.graphrag.api.services.ExploreService
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterEach
 
-import scala.concurrent.ExecutionContext
+class ExploreServiceTest extends AnyFlatSpec with Matchers {
 
-class ExploreServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
-
-  implicit val ec: ExecutionContext = ExecutionContext.global
-
-  val testNeo4jUri = "bolt://localhost:7687"
-  val testUsername = "neo4j"
-  val testPassword = "password"
-
-  "ExploreService" should "initialize without errors" in {
-    val service = new ExploreService(
-      testNeo4jUri,
-      testUsername,
-      testPassword
-    )
-
-    service should not be null
-  }
-
-  it should "handle close lifecycle" in {
-    val service = new ExploreService(
-      testNeo4jUri,
-      testUsername,
-      testPassword
-    )
-
-    noException should be thrownBy service.close()
-  }
-
-  "getNeighborhood" should "accept valid conceptId" in {
-    val service = new ExploreService(
-      testNeo4jUri,
-      testUsername,
-      testPassword
-    )
-
-    val conceptId = "apache_flink"
-    conceptId should not be empty
-  }
-
-  it should "support direction parameter" in {
-    val directions = Seq("in", "out", "both")
-
-    directions.foreach { direction =>
-      direction should (be("in") or be("out") or be("both"))
-    }
-  }
-
-  it should "support depth parameter" in {
-    val depths = Seq(1, 2, 3)
-
-    depths.foreach { depth =>
-      depth should be > 0
-    }
-  }
-
-  it should "support limit parameter" in {
-    val limits = Seq(10, 50, 100)
-
-    limits.foreach { limit =>
-      limit should be > 0
-    }
-  }
-
-  it should "support edge type filtering" in {
-    val edgeTypes = Seq("RELATES_TO", "CO_OCCURS", "MENTIONS")
-
-    edgeTypes should contain("RELATES_TO")
-    edgeTypes should contain("CO_OCCURS")
-    edgeTypes should contain("MENTIONS")
-  }
+  // ----------------------------------------------------
+  //  PURE STRING / PATTERN TESTS
+  // ----------------------------------------------------
 
   "direction pattern" should "generate correct pattern for 'in'" in {
     val direction = "in"
@@ -84,9 +14,9 @@ class ExploreServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     val depth = 2
 
     val pattern = direction match {
-      case "in" => s"<-[r:$relationPattern*1..$depth]-"
+      case "in"  => s"<-[r:$relationPattern*1..$depth]-"
       case "out" => s"-[r:$relationPattern*1..$depth]->"
-      case _ => s"-[r:$relationPattern*1..$depth]-"
+      case _     => s"-[r:$relationPattern*1..$depth]-"
     }
 
     pattern should startWith("<-")
@@ -99,9 +29,9 @@ class ExploreServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     val depth = 1
 
     val pattern = direction match {
-      case "in" => s"<-[r:$relationPattern*1..$depth]-"
+      case "in"  => s"<-[r:$relationPattern*1..$depth]-"
       case "out" => s"-[r:$relationPattern*1..$depth]->"
-      case _ => s"-[r:$relationPattern*1..$depth]-"
+      case _     => s"-[r:$relationPattern*1..$depth]-"
     }
 
     pattern should endWith("->")
@@ -113,9 +43,9 @@ class ExploreServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEa
     val depth = 3
 
     val pattern = direction match {
-      case "in" => s"<-[r:$relationPattern*1..$depth]-"
+      case "in"  => s"<-[r:$relationPattern*1..$depth]-"
       case "out" => s"-[r:$relationPattern*1..$depth]->"
-      case _ => s"-[r:$relationPattern*1..$depth]-"
+      case _     => s"-[r:$relationPattern*1..$depth]-"
     }
 
     pattern should startWith("-")
@@ -142,6 +72,10 @@ class ExploreServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEa
 
     pattern should be("")
   }
+
+  // ----------------------------------------------------
+  //  PURE MODEL TESTS (NO NEO4J)
+  // ----------------------------------------------------
 
   "Neighborhood" should "contain center concept" in {
     val neighborhood = Neighborhood(

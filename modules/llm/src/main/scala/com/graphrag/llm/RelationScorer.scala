@@ -6,12 +6,27 @@ import io.circe.generic.auto._
 import scala.util.{Try, Success, Failure}
 
 /**
- * RelationScorer: Uses LLM to score and extract relationships
+ * RelationScorer
+ *
+ * Responsible for:
+ *   - Building prompts for LLM-based relation extraction
+ *   - Sending prompts to the LLM
+ *   - Parsing the returned JSON into a Relation object
+ *
+ * Used both synchronously (scoreRelation) and asynchronously (AsyncRelationScorer).
  */
 object RelationScorer {
 
   /**
-   * Score a relation candidate using LLM
+   * scoreRelation
+   *
+   * Synchronous method for scoring a relation candidate.
+   * Primarily used outside Flink async contexts (e.g., unit tests, offline jobs).
+   *
+   * @param candidate The concept pair + chunk context
+   * @param ollamaClient Synchronous Ollama client
+   * @param model LLM model name (default: "llama3")
+   * @return Option[Relation] if a relationship is identified
    */
   def scoreRelation(
                      candidate: RelationCandidate,
@@ -25,6 +40,7 @@ object RelationScorer {
       candidate.context
     )
 
+    // Perform synchronous LLM call
     ollamaClient.generate(model, prompt, temperature = 0.0) match {
       case Success(response) =>
         parseRelationFromResponse(
@@ -32,6 +48,7 @@ object RelationScorer {
           candidate.pair.concept1.conceptId,
           candidate.pair.concept2.conceptId
         )
+
       case Failure(e) =>
         println(s"Failed to score relation: ${e.getMessage}")
         None
@@ -39,7 +56,16 @@ object RelationScorer {
   }
 
   /**
-   * Build prompt for relation extraction
+   * buildRelationPrompt
+   *
+   * Constructs a detailed and structured prompt for the LLM.
+   * Provides:
+   *   - Two concept names
+   *   - Context from the chunk text
+   *   - Precise task description
+   *   - Strict JSON schema
+   *
+   * @return LLM prompt string
    */
   def buildRelationPrompt(
                            concept1: String,
@@ -83,7 +109,19 @@ RESPOND WITH JSON ONLY. NO EXPLANATIONS:""".stripMargin
   }
 
   /**
-   * Parse relation from LLM JSON response
+   * parseRelationFromResponse
+   *
+   * Converts LLM JSON output into a Relation object.
+   * Handles:
+   *   - Markdown formatting cleanup
+   *   - JSON decode errors
+   *   - Null predicate (no relationship)
+   *   - Direction handling (forward or reverse)
+   *
+   * @param response Raw LLM response text
+   * @param conceptId1 Normalized conceptId for concept 1
+   * @param conceptId2 Normalized conceptId for concept 2
+   * @return Option[Relation]
    */
   def parseRelationFromResponse(
                                  response: String,
@@ -91,11 +129,13 @@ RESPOND WITH JSON ONLY. NO EXPLANATIONS:""".stripMargin
                                  conceptId2: String
                                ): Option[Relation] = {
     try {
+      // Strip markdown fences if the LLM inserted them
       val cleaned = response
         .replace("```json", "")
         .replace("```", "")
         .trim
 
+      // Expected JSON structure from LLM
       case class LLMRelation(
                               predicate: Option[String],
                               confidence: Double,
@@ -105,22 +145,25 @@ RESPOND WITH JSON ONLY. NO EXPLANATIONS:""".stripMargin
 
       decode[LLMRelation](cleaned) match {
         case Right(llmRel) if llmRel.predicate.isDefined =>
+          // Determine source and target based on direction field
           val (source, target) = llmRel.direction match {
             case "reverse" => (conceptId2, conceptId1)
-            case _ => (conceptId1, conceptId2)
+            case _         => (conceptId1, conceptId2)
           }
 
-          Some(Relation(
-            source = source,
-            target = target,
-            predicate = llmRel.predicate.get,
-            confidence = llmRel.confidence,
-            evidence = llmRel.evidence,
-            origin = "LLM"
-          ))
+          Some(
+            Relation(
+              source = source,
+              target = target,
+              predicate = llmRel.predicate.get,
+              confidence = llmRel.confidence,
+              evidence = llmRel.evidence,
+              origin = "LLM"
+            )
+          )
 
         case Right(_) =>
-          // No relationship found
+          // Valid JSON but no relationship detected
           None
 
         case Left(error) =>

@@ -1,0 +1,69 @@
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: graphrag-job
+  namespace: default
+spec:
+  image: ''
+  imagePullPolicy: Always
+  flinkVersion: v1_18
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "4"
+    state.backend: filesystem
+    state.checkpoints.dir: ''
+    state.savepoints.dir: ''
+    execution.checkpointing.interval: "5min"
+
+    # S3 Configuration
+    s3.access-key: ""
+    s3.secret-key: ""
+    fs.s3a.aws.credentials.provider: com.amazonaws.auth.WebIdentityTokenCredentialsProvider
+    s3.path.style.access: "false"
+    s3.endpoint: s3.us-east-1.amazonaws.com
+
+  serviceAccount: flink
+
+  jobManager:
+    resource:
+      memory: "4096m"
+      cpu: 1
+    podTemplate:
+      spec:
+        containers:
+          - name: flink-main-container
+            env:
+              - name: AWS_REGION
+                value: "us-east-1"
+            envFrom:
+              - configMapRef:
+                  name: graphrag-config
+              - secretRef:
+                  name: neo4j-credentials
+
+  taskManager:
+    resource:
+      memory: "8192m"
+      cpu: 4
+    replicas: 3
+    podTemplate:
+      spec:
+        containers:
+          - name: flink-main-container
+            env:
+              - name: AWS_REGION
+                value: "us-east-1"
+            envFrom:
+              - configMapRef:
+                  name: graphrag-config
+              - secretRef:
+                  name: neo4j-credentials
+
+  job:
+    jarURI: local:///opt/flink/usrlib/graphrag-job.jar
+    entryClass: com.graphrag.GraphRAGJob
+    args:
+      - "s3urltochunks.jsonl"
+    parallelism: 12
+    upgradeMode: savepoint
+    state: running
+    allowNonRestoredState: true

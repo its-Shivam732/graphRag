@@ -1,23 +1,23 @@
 package com.graphrag.api.services
 
-import com.graphrag.api.models.{ExecutionTrace, TraceStep}
+import com.graphrag.api.models.ExplainTrace
 import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.concurrent.TrieMap
 
 class ExplainService(implicit ec: ExecutionContext) {
 
-  // In-memory trace storage (replace with Redis/DynamoDB in production)
-  private val traces = TrieMap[String, ExecutionTrace]()
+  // In-memory storage (can be swapped with Redis or Dynamo later)
+  private val traces = TrieMap[String, ExplainTrace]()
 
-  def recordTrace(trace: ExecutionTrace): Unit = {
-    traces.put(trace.requestId, trace)
+  /** Store a trace under a requestId */
+  def recordTrace(requestId: String, trace: ExplainTrace): Unit = {
+    traces.put(requestId, trace)
   }
 
-  def getTrace(requestId: String): Future[Option[ExecutionTrace]] = Future {
+  /** Retrieve a trace by requestId */
+  def getTrace(requestId: String): Future[Option[ExplainTrace]] = Future {
     traces.get(requestId)
   }
 
-  def close(): Unit = {
-    traces.clear()
-  }
+  def close(): Unit = traces.clear()
 }

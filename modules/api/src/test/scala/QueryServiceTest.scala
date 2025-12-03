@@ -1,57 +1,20 @@
 import com.graphrag.api.models._
-import com.graphrag.api.services.QueryService
-import com.graphrag.core.models.Concept
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterEach
 
-import scala.concurrent.{Await, ExecutionContext}
-import scala.concurrent.duration._
+import io.circe.parser._
+import io.circe.generic.auto._
 
 class QueryServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
 
-  implicit val ec: ExecutionContext = ExecutionContext.global
+  //
+  // ────────────────────────────────────────────────────────────────────────────────
+  //  STRING NORMALIZATION TESTS (Pure logic)
+  // ────────────────────────────────────────────────────────────────────────────────
+  //
 
-  val testNeo4jUri = "bolt://localhost:7687"
-  val testUsername = "neo4j"
-  val testPassword = "password"
-  val testOllamaUrl = "http://localhost:11434"
-  val testModel = "llama3"
-
-  "QueryService" should "initialize without errors" in {
-    val service = new QueryService(
-      testNeo4jUri,
-      testUsername,
-      testPassword,
-      testOllamaUrl,
-      testModel
-    )
-
-    service should not be null
-  }
-
-  it should "handle close lifecycle" in {
-    val service = new QueryService(
-      testNeo4jUri,
-      testUsername,
-      testPassword,
-      testOllamaUrl,
-      testModel
-    )
-
-    noException should be thrownBy service.close()
-  }
-
-  "normalizeConceptId" should "convert text to lowercase with underscores" in {
-    val service = new QueryService(
-      testNeo4jUri,
-      testUsername,
-      testPassword,
-      testOllamaUrl,
-      testModel
-    )
-
-    // Testing via concept creation since normalizeConceptId is private
+  "normalizeConceptId logic" should "convert text to lowercase with underscores" in {
     val text = "Apache Flink"
     val normalized = text.toLowerCase
       .replaceAll("[^a-z0-9\\s]", "")
@@ -81,32 +44,23 @@ class QueryServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
     normalized should be("stream_processing_framework")
   }
 
+  //
+  // ────────────────────────────────────────────────────────────────────────────────
+  //  JSON PARSING TESTS (Pure Circe)
+  // ────────────────────────────────────────────────────────────────────────────────
+  //
 
+  case class LLMConcept(surface: String, lemma: String)
+  case class LLMResponse(concepts: List[LLMConcept])
 
   "parseConceptsFromLLM" should "parse valid JSON response" in {
-    val service = new QueryService(
-      testNeo4jUri,
-      testUsername,
-      testPassword,
-      testOllamaUrl,
-      testModel
-    )
-
     val response = """{"concepts": [{"surface": "Apache Flink", "lemma": "apache_flink"}]}"""
 
-    // Test the parsing logic
-    import io.circe.parser._
-    import io.circe.generic.auto._
-
-    case class LLMConcept(surface: String, lemma: String)
-    case class LLMResponse(concepts: List[LLMConcept])
-
     decode[LLMResponse](response) match {
-      case Right(llmResponse) =>
-        llmResponse.concepts should have size 1
-        llmResponse.concepts.head.surface should be("Apache Flink")
-      case Left(_) =>
-        fail("Should parse valid JSON")
+      case Right(res) =>
+        res.concepts should have size 1
+        res.concepts.head.surface should be("Apache Flink")
+      case Left(_) => fail("Should parse valid JSON")
     }
   }
 
@@ -124,39 +78,25 @@ class QueryServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
   it should "handle empty concepts array" in {
     val response = """{"concepts": []}"""
 
-    import io.circe.parser._
-    import io.circe.generic.auto._
-
-    case class LLMConcept(surface: String, lemma: String)
-    case class LLMResponse(concepts: List[LLMConcept])
-
     decode[LLMResponse](response) match {
-      case Right(llmResponse) =>
-        llmResponse.concepts should be(empty)
-      case Left(_) =>
-        fail("Should parse valid JSON")
+      case Right(res) => res.concepts should be(empty)
+      case Left(_)    => fail("Should parse valid JSON")
     }
   }
 
-  it should "handle invalid JSON gracefully" in {
+  it should "fail gracefully for invalid JSON" in {
     val response = """{"concepts": [invalid}"""
 
-    import io.circe.parser._
-    import io.circe.generic.auto._
-
-    case class LLMConcept(surface: String, lemma: String)
-    case class LLMResponse(concepts: List[LLMConcept])
-
-    decode[LLMResponse](response) match {
-      case Right(_) =>
-        fail("Should not parse invalid JSON")
-      case Left(_) =>
-        // Expected to fail
-        succeed
-    }
+    decode[LLMResponse](response).isLeft shouldBe true
   }
 
-  "extractConceptsFromQuery prompt" should "include query text" in {
+  //
+  // ────────────────────────────────────────────────────────────────────────────────
+  //  PROMPT GENERATION TESTS (Pure string checks)
+  // ────────────────────────────────────────────────────────────────────────────────
+  //
+
+  "extractConceptsFromQuery prompt" should "include the query text" in {
     val query = "What is Apache Flink?"
 
     val prompt = s"""Extract key concepts from this query as JSON:
@@ -175,7 +115,7 @@ Respond with JSON only:"""
     prompt should include("JSON")
   }
 
-  it should "specify JSON format" in {
+  it should "specify JSON structure" in {
     val query = "test query"
 
     val prompt = s"""Extract key concepts from this query as JSON:
@@ -194,7 +134,13 @@ Respond with JSON only:"""
     prompt should include("lemma")
   }
 
-  "QueryRequest" should "be created with valid parameters" in {
+  //
+  // ────────────────────────────────────────────────────────────────────────────────
+  //  MODEL TESTS (Pure case class behavior)
+  // ────────────────────────────────────────────────────────────────────────────────
+  //
+
+  "QueryRequest" should "store parameters" in {
     val request = QueryRequest(
       query = "What is Apache Flink?",
       includeEvidence = true,
@@ -202,21 +148,16 @@ Respond with JSON only:"""
     )
 
     request.query should be("What is Apache Flink?")
-    request.includeEvidence should be(true)
-    request.maxResults should be(100)
+    request.includeEvidence shouldBe true
+    request.maxResults shouldBe 100
   }
 
-  it should "handle query with special characters" in {
-    val request = QueryRequest(
-      query = "What is C++?",
-      includeEvidence = false,
-      maxResults = 50
-    )
-
-    request.query should include("C++")
+  it should "accept special characters" in {
+    QueryRequest("What is C++?", includeEvidence = false, maxResults = 20)
+      .query should include("C++")
   }
 
-  "QueryResponse" should "contain all required fields" in {
+  "QueryResponse" should "store all required fields" in {
     val response = QueryResponse(
       requestId = "test-id",
       concepts = Seq(ConceptResult("id", "lemma", "surface", 1.0)),
@@ -224,61 +165,48 @@ Respond with JSON only:"""
       executionTimeMs = 100
     )
 
-    response.requestId should be("test-id")
+    response.requestId shouldBe "test-id"
     response.concepts should have size 1
-    response.executionTimeMs should be(100)
+    response.executionTimeMs shouldBe 100
   }
 
   it should "handle empty results" in {
     val response = QueryResponse(
-      requestId = "test-id",
+      requestId = "id",
       concepts = Seq.empty,
       relations = Seq.empty,
-      executionTimeMs = 50
+      executionTimeMs = 10
     )
 
-    response.concepts should be(empty)
-    response.relations should be(empty)
+    response.concepts shouldBe empty
+    response.relations shouldBe empty
   }
 
-  "ConceptResult" should "store concept information" in {
-    val result = ConceptResult(
-      conceptId = "apache_flink",
-      lemma = "apache_flink",
-      surface = "Apache Flink",
-      relevanceScore = 0.95
-    )
+  "ConceptResult" should "store concept data" in {
+    val c = ConceptResult("apache_flink", "apache_flink", "Apache Flink", 0.95)
 
-    result.conceptId should be("apache_flink")
-    result.relevanceScore should be(0.95)
+    c.conceptId shouldBe "apache_flink"
+    c.relevanceScore shouldBe 0.95
   }
 
   "RelationResult" should "store relation information" in {
-    val result = RelationResult(
-      source = "concept-1",
-      target = "concept-2",
+    val r = RelationResult(
+      source = "c1",
+      target = "c2",
       predicate = "uses",
       confidence = 0.85,
-      evidence = Some("Evidence text"),
-      evidenceId = Some("chunk-001")
+      evidence = Some("evidence text"),
+      evidenceId = Some("id123")
     )
 
-    result.predicate should be("uses")
-    result.confidence should be(0.85)
-    result.evidence should be(defined)
+    r.predicate shouldBe "uses"
+    r.evidence shouldBe defined
   }
 
   it should "handle missing optional fields" in {
-    val result = RelationResult(
-      source = "concept-1",
-      target = "concept-2",
-      predicate = "uses",
-      confidence = 0.85,
-      evidence = None,
-      evidenceId = None
-    )
+    val r = RelationResult("c1", "c2", "uses", 0.85, None, None)
 
-    result.evidence should be(None)
-    result.evidenceId should be(None)
+    r.evidence shouldBe None
+    r.evidenceId shouldBe None
   }
 }

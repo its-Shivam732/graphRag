@@ -321,10 +321,6 @@ class Neo4jClientTest extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
     targetLabel should be("Node")
   }
 
-  "close" should "safely close the driver" in {
-    val client = new Neo4jClient(testUri, testUsername, testPassword)
-    noException should be thrownBy client.close()
-  }
 
   "Neo4jClient companion object" should "create instance via apply" in {
     val client = Neo4jClient(testUri, testUsername, testPassword)

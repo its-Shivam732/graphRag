@@ -4,14 +4,20 @@ import com.graphrag.core.models.{GraphNode, GraphEdge}
 import org.neo4j.driver._
 import scala.collection.JavaConverters._
 import scala.util.Try
+import org.slf4j.LoggerFactory
 
 /**
  * Neo4jClient: Thread-safe and Flink-safe client for Neo4j operations.
  */
 class Neo4jClient(uri: String, username: String, password: String) extends Serializable {
 
-  @transient private lazy val driver: Driver =
+  // Logger
+  @transient private lazy val log = LoggerFactory.getLogger(classOf[Neo4jClient])
+
+  @transient private lazy val driver: Driver = {
+    log.info(s"Initializing Neo4j driver for URI: $uri")
     GraphDatabase.driver(uri, AuthTokens.basic(username, password))
+  }
 
   // -----------------------------------------------------------------
   // Convert Scala Map[String, Any] → java.util.Map[String, Object]
@@ -24,6 +30,7 @@ class Neo4jClient(uri: String, username: String, password: String) extends Seria
   // Write Node
   // -----------------------------------------------------------------
   def writeNode(node: GraphNode): Try[Unit] = Try {
+    log.debug(s"Writing node: ${node.id} with labels ${node.labels.mkString(",")}")
     val session = driver.session()
     try {
       val labelString =
@@ -52,13 +59,16 @@ class Neo4jClient(uri: String, username: String, password: String) extends Seria
         tx.run(query, params)
         ()
       }
-    } finally session.close()
+    } finally {
+      session.close()
+    }
   }
 
   // -----------------------------------------------------------------
   // Write Edge
   // -----------------------------------------------------------------
   def writeEdge(edge: GraphEdge): Try[Unit] = Try {
+    log.debug(s"Writing edge ${edge.sourceId} -[${edge.relationType}]-> ${edge.targetId}")
     val session = driver.session()
     try {
       session.executeWrite { tx =>
@@ -94,13 +104,16 @@ class Neo4jClient(uri: String, username: String, password: String) extends Seria
         tx.run(query, params)
         ()
       }
-    } finally session.close()
+    } finally {
+      session.close()
+    }
   }
 
   // -----------------------------------------------------------------
   // Batch Write Nodes
   // -----------------------------------------------------------------
   def writeNodesBatch(nodes: Seq[GraphNode]): Try[Int] = Try {
+    log.info(s"Batch writing ${nodes.size} nodes ...")
     val session = driver.session()
     val countBuffer = Array(0)
 
@@ -136,8 +149,11 @@ class Neo4jClient(uri: String, username: String, password: String) extends Seria
           }
         }
       }
-    } finally session.close()
+    } finally {
+      session.close()
+    }
 
+    log.info(s"Batch write complete: ${countBuffer(0)} nodes")
     countBuffer(0)
   }
 
@@ -145,6 +161,7 @@ class Neo4jClient(uri: String, username: String, password: String) extends Seria
   // Batch Write Edges
   // -----------------------------------------------------------------
   def writeEdgesBatch(edges: Seq[GraphEdge]): Try[Int] = Try {
+    log.info(s"Batch writing ${edges.size} edges ...")
     val session = driver.session()
     val countBuffer = Array(0)
 
@@ -186,8 +203,11 @@ class Neo4jClient(uri: String, username: String, password: String) extends Seria
           }
         }
       }
-    } finally session.close()
+    } finally {
+      session.close()
+    }
 
+    log.info(s"Batch write complete: ${countBuffer(0)} edges")
     countBuffer(0)
   }
 
@@ -195,17 +215,25 @@ class Neo4jClient(uri: String, username: String, password: String) extends Seria
   // Test Connection
   // -----------------------------------------------------------------
   def testConnection(): Try[Boolean] = Try {
+    log.debug("Testing Neo4j connection...")
     val session = driver.session()
     try {
       session.executeRead { tx =>
         val res = tx.run("RETURN 1 AS num")
-        res.single().get("num").asInt() == 1
+        val ok = res.single().get("num").asInt() == 1
+        if (ok) log.info("Neo4j connection OK")
+        else log.warn("Neo4j connection test returned unexpected value")
+        ok
       }
-    } finally session.close()
+    } finally {
+      session.close()
+    }
   }
 
-  def close(): Unit =
+  def close(): Unit = {
+    log.info("Closing Neo4j driver")
     driver.close()
+  }
 }
 
 object Neo4jClient {

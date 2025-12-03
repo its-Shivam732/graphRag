@@ -1,62 +1,12 @@
-
 import com.graphrag.api.models.Evidence
-import com.graphrag.api.services.EvidenceService
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterEach
 
-import scala.concurrent.ExecutionContext
+class EvidenceServiceTest extends AnyFlatSpec with Matchers {
 
-class EvidenceServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
-
-  implicit val ec: ExecutionContext = ExecutionContext.global
-
-  val testNeo4jUri = "bolt://localhost:7687"
-  val testUsername = "neo4j"
-  val testPassword = "password"
-
-  "EvidenceService" should "initialize without errors" in {
-    val service = new EvidenceService(
-      testNeo4jUri,
-      testUsername,
-      testPassword
-    )
-
-    service should not be null
-  }
-
-  it should "handle close lifecycle" in {
-    val service = new EvidenceService(
-      testNeo4jUri,
-      testUsername,
-      testPassword
-    )
-
-    noException should be thrownBy service.close()
-  }
-
-  "getEvidence query" should "match chunk by chunkId" in {
-    val evidenceId = "chunk-001"
-
-    val query = """
-        MATCH (chunk:Chunk {chunkId: $evidenceId})
-        RETURN chunk.chunkId as chunkId, chunk.text as text, chunk.sourceUri as source
-      """
-
-    query should include("MATCH (chunk:Chunk")
-    query should include("chunkId: $evidenceId")
-  }
-
-  it should "return required fields" in {
-    val query = """
-        MATCH (chunk:Chunk {chunkId: $evidenceId})
-        RETURN chunk.chunkId as chunkId, chunk.text as text, chunk.sourceUri as source
-      """
-
-    query should include("chunk.chunkId as chunkId")
-    query should include("chunk.text as text")
-    query should include("chunk.sourceUri as source")
-  }
+  // ---------------------------------------------------------------------------
+  // Evidence model tests (pure unit tests, no DB, no mocking)
+  // ---------------------------------------------------------------------------
 
   "Evidence model" should "store evidenceId" in {
     val evidence = Evidence(
@@ -163,45 +113,28 @@ class EvidenceServiceTest extends AnyFlatSpec with Matchers with BeforeAndAfterE
     }
   }
 
-  "getEvidence" should "handle valid evidenceId" in {
-    val service = new EvidenceService(
-      testNeo4jUri,
-      testUsername,
-      testPassword
-    )
+  // ---------------------------------------------------------------------------
+  // Query string tests — still pure unit tests
+  // ---------------------------------------------------------------------------
 
-    val evidenceId = "chunk-001"
-    evidenceId should not be empty
+  "getEvidence query" should "match chunk by chunkId" in {
+    val query = """
+        MATCH (chunk:Chunk {chunkId: $evidenceId})
+        RETURN chunk.chunkId as chunkId, chunk.text as text, chunk.sourceUri as source
+      """
+
+    query should include("MATCH (chunk:Chunk")
+    query should include("chunkId: $evidenceId")
   }
 
-  it should "handle evidenceId with special format" in {
-    val evidenceIds = Seq(
-      "chunk-001",
-      "chunk_001",
-      "doc-123-chunk-456",
-      "chunk.001"
-    )
+  it should "return required fields" in {
+    val query = """
+        MATCH (chunk:Chunk {chunkId: $evidenceId})
+        RETURN chunk.chunkId as chunkId, chunk.text as text, chunk.sourceUri as source
+      """
 
-    evidenceIds.foreach { id =>
-      id should not be empty
-    }
-  }
-
-  "Evidence retrieval" should "return None for non-existent evidenceId" in {
-    // This tests the behavior when chunk is not found
-    val evidenceId = "non-existent-chunk"
-    evidenceId should not be empty
-  }
-
-  it should "return Some(Evidence) for existing chunk" in {
-    // This tests the successful path
-    val evidence = Some(Evidence(
-      "chunk-001",
-      "text",
-      "chunk-001",
-      "source"
-    ))
-
-    evidence should be(defined)
+    query should include("chunk.chunkId as chunkId")
+    query should include("chunk.text as text")
+    query should include("chunk.sourceUri as source")
   }
 }

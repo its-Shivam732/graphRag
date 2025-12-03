@@ -127,36 +127,20 @@ lazy val api = (project in file("modules/api"))
     )
   )
 
-
-// ------------------------------------------------------
-// Module: pipeline (your Flink + RAG job)
-// ------------------------------------------------------
-lazy val pipeline = (project in file("modules/pipeline"))
-  .dependsOn(core, ingestion, neo4j, llm, api)
-  .settings(
-    name := "graphrag-pipeline",
-    commonSettings,
-    assembly / skip := true, // don't produce an assembly here
-    libraryDependencies ++= Seq(
-      "org.apache.flink" %% "flink-streaming-scala" % flinkVersion,
-      "org.apache.flink" % "flink-streaming-java" % flinkVersion,
-      "org.apache.flink" % "flink-clients" % flinkVersion
-    ),
-    Compile / mainClass := Some("com.graphrag.GraphRAGJob")
-  )
-
-
 // ------------------------------------------------------
 // ROOT PROJECT – final deployable fat jar
 // ------------------------------------------------------
 lazy val root = (project in file("."))
-  .dependsOn(core, ingestion, neo4j, llm, api, pipeline)
+  .dependsOn(core, ingestion, neo4j, llm, api)
   .settings(
     name := "graphrag-job",
     commonSettings,
 
     // Add provided dependencies so tests can run
     libraryDependencies ++= Seq(
+      "org.apache.flink" %% "flink-streaming-scala" % flinkVersion,
+      "org.apache.flink" % "flink-streaming-java" % flinkVersion,
+      "org.apache.flink" % "flink-clients" % flinkVersion,
       "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % Test,
       "org.apache.flink" % "flink-streaming-java" % flinkVersion % Test,
       "org.apache.flink" % "flink-clients" % flinkVersion % Test,

@@ -15,7 +15,14 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 import java.util.concurrent.TimeUnit
 
+import org.slf4j.LoggerFactory   // <-- added logging
+
+/**
+ * RelationExtractionStage
+ */
 object RelationExtractionStage {
+
+  private val logger = LoggerFactory.getLogger("RelationExtractionStage")
 
   def extractRelations(
                         mentions: DataStream[Mentions],
@@ -27,26 +34,28 @@ object RelationExtractionStage {
                         maxConcurrentRequests: Int = 1
                       ): DataStream[Relation] = {
 
-    // Step 1: Find co-occurring concepts within chunks
+    logger.info("Initializing relation extraction pipeline...")
+
     val conceptPairs = mentions
-      .keyBy(new MentionChunkIdKeySelector())  // ✅ FIXED
+      .keyBy(new MentionChunkIdKeySelector())
       .process(new CooccurrenceFinder())
       .name("find-cooccurrences")
 
-    // Step 2: Join with chunks to get context
     val chunkMap = chunks
       .map(new ChunkToChunkWithIdMapper())
-      .keyBy(new ChunkWithIdKeySelector())  // ✅ FIXED
+      .keyBy(new ChunkWithIdKeySelector())
 
     val pairsWithContext = conceptPairs
       .map(new PairToPairWithChunkMapper())
-      .keyBy(new PairChunkIdKeySelector())  // ✅ FIXED
+      .keyBy(new PairChunkIdKeySelector())
       .connect(chunkMap)
       .process(new ContextJoiner())
       .name("join-context")
 
-    // Step 3: Score relations with LLM (ASYNC!)
+    logger.info("Launching asynchronous LLM relation scoring...")
+
     val javaStream = pairsWithContext.javaStream
+
     val asyncResult = JavaAsyncDataStream.unorderedWait(
       javaStream,
       new AsyncRelationScorer(ollamaUrl, ollamaModel, maxConcurrentRequests),
@@ -60,20 +69,17 @@ object RelationExtractionStage {
       .filter(new ConfidenceFilter())
   }
 
-  // KeySelectors - NO LAMBDAS!
+  // KeySelectors etc unchanged...
   class MentionChunkIdKeySelector extends KeySelector[Mentions, String] {
     override def getKey(m: Mentions): String = m.chunkId
   }
-
   class ChunkWithIdKeySelector extends KeySelector[ChunkWithId, String] {
     override def getKey(c: ChunkWithId): String = c.chunkId
   }
-
   class PairChunkIdKeySelector extends KeySelector[PairWithChunk, String] {
     override def getKey(p: PairWithChunk): String = p.chunkId
   }
 
-  // Mapper classes
   class ChunkToChunkWithIdMapper extends MapFunction[Chunk, ChunkWithId] {
     override def map(c: Chunk): ChunkWithId = ChunkWithId(c.chunkId, c.text)
   }
@@ -88,13 +94,22 @@ object RelationExtractionStage {
   }
 }
 
-class CooccurrenceFinder extends KeyedProcessFunction[String, Mentions, ConceptPair] {
+// ========================================================================
+// CooccurrenceFinder
+// ========================================================================
+
+class CooccurrenceFinder
+  extends KeyedProcessFunction[String, Mentions, ConceptPair] {
+
+  private val logger = LoggerFactory.getLogger("CooccurrenceFinder")
+
   private val conceptsBuffer = new java.util.ArrayList[Concept]()
   private val chunkIdHolder = Array[String](null)
 
   override def open(parameters: Configuration): Unit = {
     conceptsBuffer.clear()
     chunkIdHolder(0) = null
+    logger.info("CooccurrenceFinder initialized")
   }
 
   override def processElement(
@@ -102,7 +117,10 @@ class CooccurrenceFinder extends KeyedProcessFunction[String, Mentions, ConceptP
                                ctx: KeyedProcessFunction[String, Mentions, ConceptPair]#Context,
                                out: Collector[ConceptPair]
                              ): Unit = {
-    if (chunkIdHolder(0) == null) chunkIdHolder(0) = mention.chunkId
+
+    if (chunkIdHolder(0) == null)
+      chunkIdHolder(0) = mention.chunkId
+
     conceptsBuffer.add(mention.concept)
 
     ctx.timerService().registerProcessingTimeTimer(
@@ -121,12 +139,11 @@ class CooccurrenceFinder extends KeyedProcessFunction[String, Mentions, ConceptP
   private def emitPairs(out: Collector[ConceptPair]): Unit = {
     import scala.collection.JavaConverters._
 
-    val uniqueConcepts: Seq[Concept] = conceptsBuffer.asScala
-      .groupBy(_.conceptId)
-      .map(_._2.head)
-      .toSeq
+    val uniqueConcepts =
+      conceptsBuffer.asScala.groupBy(_.conceptId).map(_._2.head).toSeq
 
     if (uniqueConcepts.size >= 2) {
+      logger.info(s"Emitting ${uniqueConcepts.size} co-occurring concepts for chunk ${chunkIdHolder(0)}")
       uniqueConcepts.combinations(2).foreach {
         case Seq(c1, c2) =>
           out.collect(ConceptPair(c1, c2, 1, Set(chunkIdHolder(0))))
@@ -137,7 +154,16 @@ class CooccurrenceFinder extends KeyedProcessFunction[String, Mentions, ConceptP
     chunkIdHolder(0) = null
   }
 }
-class ContextJoiner extends CoProcessFunction[PairWithChunk, ChunkWithId, RelationCandidate] {
+
+// ========================================================================
+// ContextJoiner
+// ========================================================================
+
+class ContextJoiner
+  extends CoProcessFunction[PairWithChunk, ChunkWithId, RelationCandidate] {
+
+  private val logger = LoggerFactory.getLogger("ContextJoiner")
+
   private val chunkTexts = scala.collection.mutable.Map[String, String]()
   private val pendingPairs = scala.collection.mutable.ListBuffer[PairWithChunk]()
 
@@ -146,11 +172,13 @@ class ContextJoiner extends CoProcessFunction[PairWithChunk, ChunkWithId, Relati
                                 ctx: CoProcessFunction[PairWithChunk, ChunkWithId, RelationCandidate]#Context,
                                 out: Collector[RelationCandidate]
                               ): Unit = {
+
     chunkTexts.get(pairWithChunk.chunkId) match {
       case Some(text) =>
         out.collect(RelationCandidate(pairWithChunk.pair, text))
       case None =>
         pendingPairs += pairWithChunk
+        logger.debug(s"Pair waiting for chunk text: ${pairWithChunk.chunkId}")
     }
   }
 
@@ -159,21 +187,31 @@ class ContextJoiner extends CoProcessFunction[PairWithChunk, ChunkWithId, Relati
                                 ctx: CoProcessFunction[PairWithChunk, ChunkWithId, RelationCandidate]#Context,
                                 out: Collector[RelationCandidate]
                               ): Unit = {
-    chunkTexts(chunkWithId.chunkId) = chunkWithId.text
 
-    pendingPairs.filter(_.chunkId == chunkWithId.chunkId).foreach { pairWithChunk =>
-      out.collect(RelationCandidate(pairWithChunk.pair, chunkWithId.text))
-    }
+    chunkTexts(chunkWithId.chunkId) = chunkWithId.text
+    logger.info(s"Received chunk text for chunk ${chunkWithId.chunkId}")
+
+    pendingPairs
+      .filter(_.chunkId == chunkWithId.chunkId)
+      .foreach { pairWithChunk =>
+        out.collect(RelationCandidate(pairWithChunk.pair, chunkWithId.text))
+      }
 
     pendingPairs --= pendingPairs.filter(_.chunkId == chunkWithId.chunkId)
   }
 }
+
+// ========================================================================
+// AsyncRelationScorer
+// ========================================================================
 
 class AsyncRelationScorer(
                            ollamaUrl: String,
                            model: String,
                            maxConcurrentRequests: Int
                          ) extends RichAsyncFunction[RelationCandidate, Relation] {
+
+  private val logger = LoggerFactory.getLogger("AsyncRelationScorer")
 
   @transient private val ollamaClientHolder = Array[OllamaClient](null)
   @transient implicit private val ecHolder = Array[ExecutionContext](null)
@@ -183,10 +221,14 @@ class AsyncRelationScorer(
       java.util.concurrent.Executors.newFixedThreadPool(maxConcurrentRequests)
     )
     ollamaClientHolder(0) = OllamaClient(ollamaUrl)(ecHolder(0))
-    println(s"Initialized Async Ollama client for relation scoring: $ollamaUrl with $maxConcurrentRequests concurrent requests")
+
+    logger.info(
+      s"Initialized AsyncRelationScorer with LLM at $ollamaUrl (max concurrency = $maxConcurrentRequests)"
+    )
   }
 
   override def close(): Unit = {
+    logger.info("Closing AsyncRelationScorer LLM client")
     Option(ollamaClientHolder(0)).foreach(_.close())
   }
 
@@ -194,6 +236,7 @@ class AsyncRelationScorer(
                             candidate: RelationCandidate,
                             resultFuture: ResultFuture[Relation]
                           ): Unit = {
+
     implicit val ec: ExecutionContext = ecHolder(0)
 
     val prompt = RelationScorer.buildRelationPrompt(
@@ -202,28 +245,31 @@ class AsyncRelationScorer(
       candidate.context
     )
 
-    val relationFuture: Future[Option[Relation]] = ollamaClientHolder(0)
-      .generateAsync(model, prompt, temperature = 0.0)
-      .map { response =>
-        RelationScorer.parseRelationFromResponse(
-          response,
-          candidate.pair.concept1.conceptId,
-          candidate.pair.concept2.conceptId
-        )
-      }
-      .recover {
-        case e: Exception =>
-          println(s"LLM relation scoring failed: ${e.getMessage}")
-          None
-      }
+    val relationFuture =
+      ollamaClientHolder(0)
+        .generateAsync(model, prompt, temperature = 0.0)
+        .map { response =>
+          RelationScorer.parseRelationFromResponse(
+            response,
+            candidate.pair.concept1.conceptId,
+            candidate.pair.concept2.conceptId
+          )
+        }
+        .recover {
+          case e: Exception =>
+            logger.error(s"LLM relation scoring failed: ${e.getMessage}")
+            None
+        }
 
     relationFuture.onComplete {
-      case Success(Some(relation)) =>
-        resultFuture.complete(java.util.Collections.singleton(relation))
+      case Success(Some(rel)) =>
+        resultFuture.complete(java.util.Collections.singleton(rel))
+
       case Success(None) =>
         resultFuture.complete(java.util.Collections.emptyList())
+
       case Failure(e) =>
-        println(s"Async relation scoring failed: ${e.getMessage}")
+        logger.error(s"Async relation scoring failed: ${e.getMessage}")
         resultFuture.complete(java.util.Collections.emptyList())
     }
   }
@@ -232,7 +278,9 @@ class AsyncRelationScorer(
                         candidate: RelationCandidate,
                         resultFuture: ResultFuture[Relation]
                       ): Unit = {
-    println(s"Timeout scoring relation for ${candidate.pair.concept1.surface} - ${candidate.pair.concept2.surface}")
+    logger.warn(
+      s"Timeout scoring relation for ${candidate.pair.concept1.surface} - ${candidate.pair.concept2.surface}"
+    )
     resultFuture.complete(java.util.Collections.emptyList())
   }
 }
