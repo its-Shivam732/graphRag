@@ -495,189 +495,120 @@ RETURN c.surface, type(r), r.predicate, related.surface, r.evidence
 
 ---
 
-## API Documentation
-
-### Base URL
-```
-http://localhost:8080
-```
-
-### Endpoints
-
-#### 1. Health Check
-```http
-GET /health
-```
-
-**Response:**
-```
-OK
-```
+## API Details
+Here is a clean **README-ready Markdown section** describing each API in plain English — **no code, no clutter**, just copy/paste.
 
 ---
 
-#### 2. Natural Language Query
-```http
-POST /v1/query
-Content-Type: application/json
-
-{
-  "query": "What software artifacts is MacOS based upon?",
-  "includeEvidence": true
-}
-```
-
-**Response:**
-```json
-{
-  "mode": "sync",
-  "requestId": "req-12345",
-  "answer": "MacOS X is based upon the BSD operating system. BSD has several variants and derivatives including MacOS X, SunOS, and NetBSD...",
-  "groups": [
-    {
-      "items": [
-        {
-          "paperId": "1083142.1083145",
-          "title": "Mining Evolution Data of a Product Family",
-          "concepts": ["software artifact", "MacOS X", "BSD", "SunOS", "NetBSD"],
-          "citations": ["evid:chunk-1958", "evid:chunk-1959"]
-        }
-      ]
-    }
-  ],
-  "evidenceAvailable": true,
-  "executionTimeMs": 441
-}
-```
+# 📘 API Overview (Plain English)
 
 ---
 
-#### 3. Graph Exploration
-```http
-GET /v1/graph/concept/{conceptId}/neighbors
-```
+## 1. **Natural Language Query — Ask Questions About the Knowledge Graph**
 
+This is the main query endpoint.
 
-**Example:**
-```bash
-curl "http://localhost:8080/v1/graph/concept/software_artifact/neighbors
-```
+You send a natural-language question such as:
+*“What software artifacts is MacOS based upon?”*
 
-**Response:**
-```json
-{
-    "nodes": [
-        {
-            "id": "software artifact"
-        }
-    ],
-    "edges": [
-        {
-            "from": "software artifact",
-            "to": "BSD"
-        },
-        {
-            "from": "software artifact",
-            "to": "Macos"
-        }
-    ]
-}
-```
+The system then:
+
+* Uses an LLM to extract key concepts from your question
+* Searches the Neo4j knowledge graph
+* Finds related concepts, documents, and relationships
+* Optionally returns the underlying evidence used to produce the answer
+
+The response includes:
+
+* A natural-language answer
+* A request ID
+* Groups of results with matched concepts and evidence
+* Whether evidence text is available
+* Total processing time
+
+Use this when you want **direct answers backed by graph-based reasoning**.
 
 ---
 
-#### 4. Evidence Retrieval
-```http
-GET /v1/evidence/{evidenceId}
-```
+## 2. **Graph Exploration — Get Neighboring Concepts**
 
-**Example:**
-```bash
-curl http://localhost:8080/v1/evidence/chunk-1958
-```
+This endpoint lets you browse the graph itself.
 
-**Response:**
-```json
-{
-  "evidenceId": "chunk-1958",
-  "paperId": "1083142.1083145",
-  "text": "Representative of such a family of related products is the BSD operating system with its variants and derivatives such as MacOS X, SunOS, or NetBSD.",
-  "docRef": {
-    "title": "Mining Evolution Data of a Product Family"
-  }
-}
-```
+You provide a concept ID, and the system returns:
+
+* The concept node
+* Its neighboring nodes
+* The edges connecting them
+
+This helps you:
+
+* Explore connected entities
+* Visualize relationships
+* Build interactive graph explorers
+
+Example use:
+Find what concepts “software artifact” is directly connected to.
 
 ---
 
-#### 5. Query Execution Trace
-```http
-GET /v1/explain/trace/{requestId}
-```
+## 3. **Evidence Retrieval — Get the Original Text Supporting an Answer**
 
-**Example:**
-```bash
-curl http://localhost:8080/v1/explain/trace/req-12345 | jq
-```
+Every answer and graph relationship is backed by one or more text chunks.
 
-**Response:**
-```json
-{
-  "requestId": "req-12345",
-  "query": "What software artifacts is MacOS based upon?",
-  "timestamp": 1701436800000,
-  "steps": [
-    {
-      "stepName": "extractConcepts",
-      "description": "Extract concepts from natural language query using LLM",
-      "durationMs": 342,
-      "details": {
-        "cypher": null,
-        "detail": "Ollama LLM extracted concepts: ['MacOS X', 'software artifact', 'based upon']"
-      }
-    },
-    {
-      "stepName": "findMatchingConcepts",
-      "description": "Find concepts in Neo4j graph matching extracted terms",
-      "durationMs": 23,
-      "details": {
-        "cypher": "MATCH (c:Concept) WHERE c.lemma IN ['macos x', 'software artifact'] RETURN c",
-        "detail": "Found 2 matching concepts"
-      }
-    },
-    {
-      "stepName": "getRelations",
-      "description": "Retrieve relationships between matched concepts",
-      "durationMs": 18,
-      "details": {
-        "cypher": "MATCH (c1:Concept)-[r:RELATES_TO]->(c2:Concept) WHERE ... RETURN c1, r, c2",
-        "detail": "Found 1 relation: software_artifact -[part_of]-> MacOS X"
-      }
-    }
-  ],
-  "totalTimeMs": 441
-}
-```
+When you call this endpoint with an evidence ID, it returns:
+
+* The full text of the evidence chunk
+* The document or paper it came from
+* The chunk ID and paper ID
+* Any metadata such as the document title
+
+Use this to:
+
+* Validate answers
+* Display citations
+* Provide transparency to end users
 
 ---
 
-#### 6. Flink Job Status
-```http
-GET /v1/job/status/{jobId}
-```
+## 4. **Query Execution Trace — See How Your Answer Was Produced**
 
-**Example:**
-```bash
-curl http://localhost:8080/v1/job/status/abc123def456
-```
+This endpoint explains **exactly how** the system processed your natural-language question.
 
-**Response:**
-```json
-{
-  "jobId": "abc123def456",
-  "status": "RUNNING"
-}
-```
+You provide the `requestId` from a previous query.
+
+The response shows:
+
+* The original query
+* A timestamp
+* A step-by-step breakdown of processing
+* LLM-extracted concepts
+* Cypher queries executed
+* Relationships found
+* Execution time for each step and total time
+
+Use this for:
+
+* Debugging
+* Auditing
+* Understanding how the reasoning pipeline works
+* Transparency / explainability
+
+---
+
+## 5. **Flink Job Status — Check Ingestion or Processing Jobs**
+
+This endpoint tells you whether a Flink job is running.
+
+You provide a `jobId`, and the system returns:
+
+* The job ID
+* The current job status (RUNNING, FINISHED, FAILED, etc.)
+
+Useful when managing:
+
+* Graph ingestion pipelines
+* Batch processing
+* Scheduled jobs
 
 ---
 
