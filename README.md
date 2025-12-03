@@ -129,8 +129,6 @@ Input: chunks.jsonl
 - ✅ **Asynchronous LLM integration** - Non-blocking Ollama calls
 - ✅ **Hybrid concept extraction** - Stanford NLP + LLM refinement
 - ✅ **Distributed processing** - Scales to millions of documents
-- ✅ **Fault tolerance** - Checkpointing to S3
-- ✅ **Backpressure handling** - Automatic rate limiting
 - ✅ **Lambda-free Flink** - Explicit KeySelectors for serialization
 
 ### API Features
@@ -138,7 +136,6 @@ Input: chunks.jsonl
 - ✅ **Graph exploration** - Multi-hop neighbor traversal
 - ✅ **Evidence retrieval** - Source text for claims
 - ✅ **Execution tracing** - Query plan visualization
-- ✅ **Hardcoded demo responses** - For quick testing
 
 ### Graph Schema
 ```cypher
