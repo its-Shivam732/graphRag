@@ -385,6 +385,8 @@ find . -name "*.jar" -path "*/target/scala-2.12/*"
 
 ### Option 1: Run Flink Job Locally
 
+NOTE-add --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED to edit config vm
+
 ```bash
 # Set environment variables
 source .env
@@ -394,6 +396,16 @@ source .env
   -p 4 \
   /Users/moudgil/graphrag-pipeline.jar \
  file:///$(pwd)/chunks.jsonl
+
+OR
+java \
+  --add-opens=java.base/java.util=ALL-UNNAMED \
+  --add-opens=java.base/java.lang=ALL-UNNAMED \
+  --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+  -cp graphrag-job.jar \
+  com.graphrag.GraphRAGJob \
+  /path/to/input-file-or-folder
+
 ```
 
 **Expected Output:**
