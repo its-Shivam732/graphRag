@@ -371,24 +371,6 @@ sbt test
 sbt clean assembly
 ```
 
-### Build Flink Job Only
-
-```bash
-sbt "project flinkJob" clean assembly
-
-# Output: flink-job/target/scala-2.12/graphrag-pipeline.jar
-ls -lh flink-job/target/scala-2.12/graphrag-pipeline.jar
-```
-
-### Build API Service Only
-
-```bash
-sbt "project apiService" clean assembly
-
-# Output: api-service/target/scala-2.12/graphrag-api-service.jar
-ls -lh api-service/target/scala-2.12/graphrag-api-service.jar
-```
-
 ### Check Build Artifacts
 
 ```bash
@@ -405,12 +387,12 @@ find . -name "*.jar" -path "*/target/scala-2.12/*"
 ```bash
 # Set environment variables
 source .env
-
-# Run from SBT
-sbt "project flinkJob" "run file:///$(pwd)/chunks.jsonl"
-
-# Or run JAR directly
-java -jar flink-job/target/scala-2.12/graphrag-pipeline.jar file:///$(pwd)/chunks.jsonl
+# Run from flink cluster running locally
+ flink run \                                                                            
+  -c com.graphrag.GraphRAGJob \
+  -p 4 \
+  /Users/moudgil/graphrag-pipeline.jar \
+ file:///$(pwd)/chunks.jsonl
 ```
 
 **Expected Output:**
@@ -447,9 +429,7 @@ source .env
 sbt "project apiService" run
 
 # Or run JAR directly
-java -jar api-service/target/scala-2.12/graphrag-api-service.jar
-```
-
+java -cp graphrag-pipeline.jar com.graphrag.api.GraphRAGApiServer```
 **Expected Output:**
 ```
 Server online at http://0.0.0.0:8080/
@@ -475,7 +455,6 @@ curl -X POST http://localhost:8080/v1/query \
 # Expected output:
 {
   "mode": "sync",
-  "requestId": "req-a3f2b1c4",
   "answer": "MacOS X is based upon the BSD operating system...",
   "groups": [...],
   "evidenceAvailable": true,
@@ -538,7 +517,6 @@ Content-Type: application/json
 
 {
   "query": "What software artifacts is MacOS based upon?",
-  "maxResults": 10,
   "includeEvidence": true
 }
 ```
