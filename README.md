@@ -18,7 +18,7 @@ A production-grade system for building knowledge graphs from unstructured text u
 - [Local Development](#local-development)
 - [Building the Project](#building-the-project)
 - [Running Locally](#running-locally)
-- [API Documentation](#api-documentation)
+- [API Details](#api-details)
 - [EKS Deployment](#eks-deployment)
 - [Configuration](#configuration)
 - [Monitoring & Troubleshooting](#monitoring--troubleshooting)
