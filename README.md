@@ -386,7 +386,30 @@ find . -name "*.jar" -path "*/target/scala-2.12/*"
 
 ### Run Flink Job Locally
 
-First intall flink cluster locally and update opt/flink/conf/config.yaml to
+First intall flink cluster locally 
+```
+curl -O https://archive.apache.org/dist/flink/flink-1.20.0/flink-1.20.0-bin-scala_2.12.tgz
+# Extract
+tar -xzf flink-1.20.0-bin-scala_2.12.tgz
+
+# Move to /opt
+sudo mkdir -p /opt
+sudo mv flink-1.20.0 /opt/flink
+
+# Set ownership (optional, for easier access)
+sudo chown -R $(whoami) /opt/flink
+
+# Add to PATH
+echo 'export FLINK_HOME=/opt/flink' >> ~/.zshrc
+echo 'export PATH=$PATH:$FLINK_HOME/bin' >> ~/.zshrc
+source ~/.zshrc
+
+# Verify installation
+flink --version
+```
+
+Then update opt/flink/conf/config.yaml to
+
 ```
 ################################################################################
 #  Licensed to the Apache Software Foundation (ASF) under one
@@ -528,7 +551,8 @@ STEP 7: Writing to Neo4j...
 
 Executing pipeline...
 ```
-
+### Note
+other option to run is right click on Grahragjob class on intelij and try to run from there. Before this edit run config in intellij for Grahragjob class and add vm options --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED
 ### API Service
 
 ### Test API Endpoints
