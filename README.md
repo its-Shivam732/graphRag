@@ -386,6 +386,111 @@ find . -name "*.jar" -path "*/target/scala-2.12/*"
 
 ### Run Flink Job Locally
 
+First intall flink cluster locally and update opt/flink/conf/config.yaml to
+```
+################################################################################
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+################################################################################
+
+# These parameters are required for Java 17 support.
+env:
+  java:
+    opts:
+      all: --add-exports=java.base/sun.net.util=ALL-UNNAMED --add-exports=java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.text=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED
+
+#==============================================================================
+# Common
+#==============================================================================
+
+jobmanager:
+  bind-host: localhost
+  rpc:
+    address: localhost
+    port: 6123
+  memory:
+    process:
+      size: 2048m
+  execution:
+    failover-strategy: region
+
+taskmanager:
+  bind-host: localhost
+  host: localhost
+  numberOfTaskSlots: 4
+  memory:
+    process:
+      size: 4096m
+    network:
+      fraction: 0.1
+      min: 64mb
+      max: 512mb
+
+parallelism:
+  default: 4
+
+#==============================================================================
+# Fault tolerance and checkpointing
+#==============================================================================
+
+execution:
+  checkpointing:
+    interval: 60s
+    mode: EXACTLY_ONCE
+    timeout: 10min
+    max-concurrent-checkpoints: 1
+    min-pause: 10s
+
+state:
+  backend:
+    type: hashmap
+    incremental: false
+  checkpoints:
+    dir: file:///tmp/flink-checkpoints
+  savepoints:
+    dir: file:///tmp/flink-savepoints
+
+#==============================================================================
+# Rest & web frontend
+#==============================================================================
+
+rest:
+  address: localhost
+  bind-address: localhost
+  port: 8081
+
+web:
+  submit:
+    enable: true
+  cancel:
+    enable: true
+
+#==============================================================================
+# Advanced
+#==============================================================================
+
+io:
+  tmp:
+    dirs: /tmp
+
+classloader:
+  resolve:
+    order: child-first
+```
+
 NOTE-put vm options --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED to edit config vm
 
 ```bash
