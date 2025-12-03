@@ -136,11 +136,20 @@ lazy val root = (project in file("."))
     name := "graphrag-job",
     commonSettings,
 
-    // Add provided dependencies so tests can run
+    Compile / run / javaOptions ++= Seq(
+      "--add-opens=java.base/java.util=ALL-UNNAMED",
+      "--add-opens=java.base/java.lang=ALL-UNNAMED",
+      "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED"
+    ),
+    // ✅ Add all Flink dependencies (not Provided for root project)
     libraryDependencies ++= Seq(
       "org.apache.flink" %% "flink-streaming-scala" % flinkVersion,
       "org.apache.flink" % "flink-streaming-java" % flinkVersion,
       "org.apache.flink" % "flink-clients" % flinkVersion,
+      "org.apache.flink" % "flink-connector-files" % flinkVersion,  // ✅ Add this
+      "org.apache.hadoop" % "hadoop-common" % "3.3.4",              // ✅ Add this
+
+      // Test scope
       "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % Test,
       "org.apache.flink" % "flink-streaming-java" % flinkVersion % Test,
       "org.apache.flink" % "flink-clients" % flinkVersion % Test,

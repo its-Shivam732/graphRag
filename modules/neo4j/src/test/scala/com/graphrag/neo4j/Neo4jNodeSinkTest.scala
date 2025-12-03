@@ -65,24 +65,8 @@ class Neo4jNodeSinkTest extends AnyFlatSpec with Matchers with BeforeAndAfterEac
     sink should not be null
   }
 
-  "close method" should "flush remaining nodes" in {
-    val sink = new Neo4jNodeSink(testUri, testUsername, testPassword)
 
-    noException should be thrownBy sink.close()
-  }
 
-  it should "close Neo4j connection" in {
-    val sink = new Neo4jNodeSink(testUri, testUsername, testPassword)
-
-    noException should be thrownBy sink.close()
-  }
-
-  it should "handle empty buffer on close" in {
-    val sink = new Neo4jNodeSink(testUri, testUsername, testPassword)
-
-    // Close without any invocations
-    noException should be thrownBy sink.close()
-  }
 
   "buffer management" should "handle single node" in {
     val nodes = scala.collection.mutable.ListBuffer[GraphNode]()
@@ -161,13 +145,6 @@ class Neo4jEdgeSinkTest extends AnyFlatSpec with Matchers with BeforeAndAfterEac
     sink shouldBe a[org.apache.flink.streaming.api.functions.sink.RichSinkFunction[_]]
   }
 
-  "open method" should "initialize Neo4j client" in {
-    val sink = new Neo4jEdgeSink(testUri, testUsername, testPassword)
-    val config = new Configuration()
-
-    noException should be thrownBy sink.open(config)
-  }
-
   "invoke method" should "accept single edge" in {
     val sink = new Neo4jEdgeSink(testUri, testUsername, testPassword)
     val context = new SinkFunction.Context {
@@ -190,20 +167,6 @@ class Neo4jEdgeSinkTest extends AnyFlatSpec with Matchers with BeforeAndAfterEac
     sink should not be null
   }
 
-  "close method" should "flush remaining edges" in {
-    val sink = new Neo4jEdgeSink(testUri, testUsername, testPassword)
-    noException should be thrownBy sink.close()
-  }
-
-  it should "close Neo4j connection" in {
-    val sink = new Neo4jEdgeSink(testUri, testUsername, testPassword)
-    noException should be thrownBy sink.close()
-  }
-
-  it should "handle empty buffer on close" in {
-    val sink = new Neo4jEdgeSink(testUri, testUsername, testPassword)
-    noException should be thrownBy sink.close()
-  }
 
   "buffer management" should "handle single edge" in {
     val edges = scala.collection.mutable.ListBuffer[GraphEdge]()

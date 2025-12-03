@@ -29,7 +29,7 @@ object GraphProjectionStage {
    * Each chunk becomes a node in the graph.
    */
   def projectChunks(chunks: DataStream[Chunk]): DataStream[GraphNode] = {
-    log.debug("Projecting chunks → GraphNode")
+    println("Projecting chunks → GraphNode")
     chunks
       .map(new ChunkToNodeMapper())
       .name("project-chunks-to-nodes")
@@ -45,7 +45,7 @@ object GraphProjectionStage {
    *   4. convert to GraphNode
    */
   def projectConcepts(mentions: DataStream[Mentions]): DataStream[GraphNode] = {
-    log.debug("Projecting concepts → GraphNode")
+    println("Projecting concepts → GraphNode")
     mentions
       .map(new MentionToConceptMapper())
       .keyBy(new ConceptIdKeySelector())
@@ -59,7 +59,7 @@ object GraphProjectionStage {
    * These represent that a concept was mentioned inside a chunk.
    */
   def projectMentions(mentions: DataStream[Mentions]): DataStream[GraphEdge] = {
-    log.debug("Projecting mentions → GraphEdge")
+    println("Projecting mentions → GraphEdge")
     mentions
       .map(new MentionToEdgeMapper())
       .name("project-mentions-to-edges")
@@ -70,7 +70,7 @@ object GraphProjectionStage {
    * These edges often represent semantic proximity or relatedness.
    */
   def projectCooccurrences(pairs: DataStream[ConceptPair]): DataStream[GraphEdge] = {
-    log.debug("Projecting co-occurrences → GraphEdge")
+    println("Projecting co-occurrences → GraphEdge")
     pairs
       .map(new CooccurToEdgeMapper())
       .name("project-cooccurs-to-edges")
@@ -80,7 +80,7 @@ object GraphProjectionStage {
    * Project scored relations (LLM-generated) into graph edges.
    */
   def projectRelations(relations: DataStream[Relation]): DataStream[GraphEdge] = {
-    log.debug("Projecting relations → GraphEdge")
+    println("Projecting relations → GraphEdge")
     relations
       .map(new RelationToEdgeMapper())
       .name("project-relations-to-edges")
