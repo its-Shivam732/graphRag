@@ -398,15 +398,6 @@ source .env
   /Users/moudgil/graphrag-pipeline.jar \
  file:///$(pwd)/chunks.jsonl
 
-OR
-java \
-  --add-opens=java.base/java.util=ALL-UNNAMED \
-  --add-opens=java.base/java.lang=ALL-UNNAMED \
-  --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
-  -cp graphrag-job.jar \
-  com.graphrag.GraphRAGJob \
-  /path/to/input-file-or-folder
-
 ```
 
 **Expected Output:**
