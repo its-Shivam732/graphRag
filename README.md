@@ -5,7 +5,7 @@
 
 A production-grade system for building knowledge graphs from unstructured text using Apache Flink for distributed processing, Neo4j for graph storage, and LLMs for entity/relation extraction.
 
-# Youtube video---https://youtu.be/LY62T4pu1zU
+# Youtube video---https://youtu.be/L9dtwKSTC3Q
 ---
 
 ## Table of Contents
