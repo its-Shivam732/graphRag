@@ -548,35 +548,33 @@ Content-Type: application/json
 
 #### 3. Graph Exploration
 ```http
-GET /v1/graph/concept/{conceptId}/neighbors?direction=both&depth=2&limit=20
+GET /v1/graph/concept/{conceptId}/neighbors
 ```
 
-**Parameters:**
-- `direction`: `in` | `out` | `both` (default: `both`)
-- `depth`: `1-3` (default: `1`)
-- `limit`: `1-100` (default: `100`)
-- `edgeTypes`: comma-separated (default: `RELATES_TO,CO_OCCURS,MENTIONS`)
 
 **Example:**
 ```bash
-curl "http://localhost:8080/v1/graph/concept/software_artifact/neighbors?depth=2&limit=20"
+curl "http://localhost:8080/v1/graph/concept/software_artifact/neighbors
 ```
 
 **Response:**
 ```json
 {
-  "nodes": [
-    {"id": "software_artifact"},
-    {"id": "macos_x"},
-    {"id": "bsd_operating_system"},
-    {"id": "sunos"},
-    {"id": "netbsd"}
-  ],
-  "edges": [
-    {"from": "software_artifact", "to": "macos_x"},
-    {"from": "software_artifact", "to": "bsd_operating_system"},
-    {"from": "bsd_operating_system", "to": "sunos"}
-  ]
+    "nodes": [
+        {
+            "id": "software artifact"
+        }
+    ],
+    "edges": [
+        {
+            "from": "software artifact",
+            "to": "BSD"
+        },
+        {
+            "from": "software artifact",
+            "to": "Macos"
+        }
+    ]
 }
 ```
 
