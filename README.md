@@ -17,7 +17,7 @@ A production-grade system for building knowledge graphs from unstructured text u
 - [Local Development](#local-development)
 - [Building the Project](#building-the-project)
 - [Running Locally](#running-locally)
-- [API Details](#api-details)
+- [API Overview](#api-overview)
 - [EKS Deployment](#eks-deployment)
 - [Configuration](#configuration)
 - [Monitoring & Troubleshooting](#monitoring--troubleshooting)
@@ -494,14 +494,7 @@ RETURN c.surface, type(r), r.predicate, related.surface, r.evidence
 
 ---
 
-## API Details
-Here is a clean **README-ready Markdown section** describing each API in plain English — **no code, no clutter**, just copy/paste.
-
----
-
-# 📘 API Overview (Plain English)
-
----
+## API Overview
 
 ## 1. **Natural Language Query — Ask Questions About the Knowledge Graph**
 
