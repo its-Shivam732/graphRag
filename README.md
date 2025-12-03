@@ -1510,24 +1510,9 @@ kubectl patch flinkdeployment graphrag-job -p '{"spec":{"job":{"state":"running"
 
 ---
 
-#### 3. Use Fargate for API
-
-```bash
-# Deploy API service to Fargate (serverless)
-kubectl create namespace api-fargate
-
-eksctl create fargateprofile \
-  --cluster graphrag-cluster \
-  --name api-profile \
-  --namespace api-fargate
-
-# Deploy API to Fargate namespace
-kubectl apply -f api-deployment.yaml -n api-fargate
-```
-
 ---
 
-#### 4. Delete Cluster When Done
+#### 3. Delete Cluster When Done
 
 ```bash
 # Delete entire cluster
@@ -1544,73 +1529,3 @@ aws s3 rb s3://graphrag-flink-data --force
 ```
 
 ---
-
-### Production Best Practices
-
-1. **Use Spot Instances** for TaskManagers (70% cost savings)
-2. **Auto-scaling** based on workload
-3. **Reserved Instances** for stable workloads (40% savings)
-4. **S3 Lifecycle Policies** - Archive old checkpoints to Glacier
-5. **Monitoring** - CloudWatch alarms for cost anomalies
-6. **Tagging** - Tag all resources for cost allocation
-
----
-
-## Contributing
-
-```bash
-# Fork repository
-git clone <your-fork>
-cd graphRag
-
-# Create feature branch
-git checkout -b feature/your-feature
-
-# Make changes
-# ...
-
-# Test locally
-sbt test
-sbt "project flinkJob" assembly
-sbt "project apiService" assembly
-
-# Commit
-git add .
-git commit -m "Add your feature"
-
-# Push
-git push origin feature/your-feature
-
-# Create Pull Request
-```
-
----
-
-## License
-
-MIT License - See LICENSE file
-
----
-
-## Support
-
-- **Issues:** https://github.com/your-repo/issues
-- **Email:** your-email@example.com
-- **Documentation:** https://your-docs-site.com
-
----
-
-## Acknowledgments
-
-- Apache Flink team
-- Neo4j team
-- Ollama team
-- Stanford CoreNLP team
-
----
-
-**Built with ❤️ for CS 512 - Cloud Computing**
-
----
-
-This README covers everything from prerequisites to deployment! Save it as `README.md` in your project root. 🚀
