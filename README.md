@@ -1,4 +1,3 @@
- (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/README.md b/README.md
 new file mode 100644
 index 0000000000000000000000000000000000000000..a53e859ffe7dbdd050a3b47146b115600734016f
@@ -76,6 +75,3 @@ index 0000000000000000000000000000000000000000..a53e859ffe7dbdd050a3b47146b11560
 +4. Ensure Neo4j credentials and URI are available in the environment if graph writing is enabled.
 +
 +This README reflects the existing code path and Kubernetes assets so that newcomers can understand and operate the GraphRAG pipeline end to end.
- 
-EOF
-)
